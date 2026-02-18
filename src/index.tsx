@@ -1,115 +1,255 @@
 import {
-  ButtonItem,
+  ConfirmModal,
+  Field,
   PanelSection,
   PanelSectionRow,
-  Navigation,
-  staticClasses
+  TextField,
+  ToggleField,
+  showModal,
+  staticClasses,
 } from "@decky/ui";
-import {
-  addEventListener,
-  removeEventListener,
-  callable,
-  definePlugin,
-  toaster,
-  // routerHook
-} from "@decky/api"
-import { useState } from "react";
-import { FaShip } from "react-icons/fa";
+import { callable, definePlugin, toaster } from "@decky/api";
+import { useCallback, useEffect, useState } from "react";
+import { FaMicrophone } from "react-icons/fa";
 
-// import logo from "../assets/logo.png";
+interface PluginState {
+  ip: string;
+  port: number;
+  running: boolean;
+  pid: number | null;
+}
 
-// This function calls the python function "add", which takes in two numbers and returns their sum (as a number)
-// Note the type annotations:
-//  the first one: [first: number, second: number] is for the arguments
-//  the second one: number is for the return value
-const add = callable<[first: number, second: number], number>("add");
+interface EditValueModalProps {
+  closeModal?: () => void;
+  title: string;
+  label: string;
+  description: string;
+  initialValue: string;
+  onSubmit: (value: string) => Promise<void>;
+}
 
-// This function calls the python function "start_timer", which takes in no arguments and returns nothing.
-// It starts a (python) timer which eventually emits the event 'timer_event'
-const startTimer = callable<[], void>("start_timer");
+const getState = callable<[], PluginState>("get_state");
+const validateIp = callable<[address: string], boolean>("validate_ip");
+const validatePort = callable<[port: number], boolean>("validate_port");
+const updateConfig = callable<[address: string, port: number], PluginState>("update_config");
+const setEnabled = callable<[enabled: boolean], PluginState>("set_enabled");
 
-function Content() {
-  const [result, setResult] = useState<number | undefined>();
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return "Unknown error";
+}
 
-  const onClick = async () => {
-    const result = await add(Math.random(), Math.random());
-    setResult(result);
+function EditValueModal({
+  closeModal,
+  title,
+  label,
+  description,
+  initialValue,
+  onSubmit,
+}: EditValueModalProps) {
+  const [value, setValue] = useState<string>(initialValue);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const close = closeModal ?? (() => {});
+
+  const onConfirm = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSubmit(value.trim());
+      close();
+    } catch (error) {
+      toaster.toast({
+        title: "Validation error",
+        body: getErrorMessage(error),
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <PanelSection title="Panel Section">
+    <ConfirmModal
+      strTitle={title}
+      strOKButtonText="Save"
+      strCancelButtonText="Cancel"
+      bOKDisabled={isSaving}
+      onCancel={close}
+      onOK={() => {
+        void onConfirm();
+      }}
+    >
+      <div style={{ marginTop: "-0.6rem" }}>
+        <TextField
+          label={label}
+          value={value}
+          focusOnMount
+          onChange={(event) => setValue(event.currentTarget.value)}
+        />
+        <div style={{ opacity: 0.8, marginTop: "0.8rem", fontSize: "0.82em" }}>{description}</div>
+      </div>
+    </ConfirmModal>
+  );
+}
+
+function Content() {
+  const [state, setState] = useState<PluginState | null>(null);
+  const [isBusy, setIsBusy] = useState<boolean>(false);
+
+  const refreshState = useCallback(async () => {
+    const next = await getState();
+    setState(next);
+  }, []);
+
+  useEffect(() => {
+    void refreshState();
+  }, [refreshState]);
+
+  const openIpModal = () => {
+    if (state === null) {
+      return;
+    }
+
+    showModal(
+      <EditValueModal
+        title="Edit IP address"
+        label="IP address"
+        description="Only valid IPv4 or IPv6 addresses are allowed."
+        initialValue={state.ip}
+        onSubmit={async (value: string) => {
+          const valid = await validateIp(value);
+          if (!valid) {
+            throw new Error("Enter a valid IPv4 or IPv6 address.");
+          }
+          const next = await updateConfig(value, state.port);
+          setState(next);
+        }}
+      />,
+      undefined,
+      {
+        popupHeight: 220,
+      },
+    );
+  };
+
+  const openPortModal = () => {
+    if (state === null) {
+      return;
+    }
+
+    showModal(
+      <EditValueModal
+        title="Edit port"
+        label="Port"
+        description="Only numeric values in range 1024-65535 are allowed."
+        initialValue={String(state.port)}
+        onSubmit={async (value: string) => {
+          if (!/^\d+$/.test(value)) {
+            throw new Error("Port must contain digits only.");
+          }
+
+          const port = Number.parseInt(value, 10);
+          const valid = await validatePort(port);
+          if (!valid) {
+            throw new Error("Port must be between 1024 and 65535.");
+          }
+
+          const next = await updateConfig(state.ip, port);
+          setState(next);
+        }}
+      />,
+      undefined,
+      {
+        popupHeight: 220,
+      },
+    );
+  };
+
+  const onToggle = async (enabled: boolean) => {
+    if (state === null || isBusy) {
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      const next = await setEnabled(enabled);
+      setState(next);
+    } catch (error) {
+      toaster.toast({
+        title: "Failed to update AWiM state",
+        body: getErrorMessage(error),
+      });
+      await refreshState();
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  return (
+    <PanelSection title="AWiM Client">
       <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={onClick}
+        <Field
+          label="IP address"
+          description="Tap to edit."
+          highlightOnFocus
+          focusable
+          onClick={openIpModal}
+          onActivate={openIpModal}
         >
-          {result ?? "Add two numbers via Python"}
-        </ButtonItem>
+          <div>{state?.ip ?? "Loading..."}</div>
+        </Field>
       </PanelSectionRow>
       <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={() => startTimer()}
+        <Field
+          label="Port"
+          description="Tap to edit."
+          highlightOnFocus
+          focusable
+          onClick={openPortModal}
+          onActivate={openPortModal}
         >
-          {"Start Python timer"}
-        </ButtonItem>
+          <div>{state?.port ?? "Loading..."}</div>
+        </Field>
       </PanelSectionRow>
-
-      {/* <PanelSectionRow>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <img src={logo} />
-        </div>
-      </PanelSectionRow> */}
-
-      {/*<PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={() => {
-            Navigation.Navigate("/decky-plugin-test");
-            Navigation.CloseSideMenus();
+      <PanelSectionRow>
+        <Field label="Status">
+          <div>
+            {state?.running
+              ? `Running${state.pid !== null ? ` (PID ${state.pid})` : ""}`
+              : "Stopped"}
+          </div>
+        </Field>
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <ToggleField
+          label="Enable AWiM"
+          description="Runs or stops awim with selected IP and port."
+          checked={state?.running ?? false}
+          disabled={state === null || isBusy}
+          onChange={(enabled) => {
+            void onToggle(enabled);
           }}
-        >
-          Router
-        </ButtonItem>
-      </PanelSectionRow>*/}
+        />
+      </PanelSectionRow>
     </PanelSection>
   );
-};
+}
 
 export default definePlugin(() => {
-  console.log("Template plugin initializing, this is called once on frontend startup")
-
-  // serverApi.routerHook.addRoute("/decky-plugin-test", DeckyPluginRouterTest, {
-  //   exact: true,
-  // });
-
-  // Add an event listener to the "timer_event" event from the backend
-  const listener = addEventListener<[
-    test1: string,
-    test2: boolean,
-    test3: number
-  ]>("timer_event", (test1, test2, test3) => {
-    console.log("Template got timer_event with:", test1, test2, test3)
-    toaster.toast({
-      title: "template got timer_event",
-      body: `${test1}, ${test2}, ${test3}`
-    });
-  });
-
   return {
-    // The name shown in various decky menus
-    name: "Test Plugin",
-    // The element displayed at the top of your plugin's menu
-    titleView: <div className={staticClasses.Title}>Decky Example Plugin</div>,
-    // The content of your plugin's menu
+    name: "awim-deck",
+    titleView: <div className={staticClasses.Title}>awim-deck</div>,
     content: <Content />,
-    // The icon displayed in the plugin list
-    icon: <FaShip />,
-    // The function triggered when your plugin unloads
+    icon: <FaMicrophone />,
     onDismount() {
-      console.log("Unloading")
-      removeEventListener("timer_event", listener);
-      // serverApi.routerHook.removeRoute("/decky-plugin-test");
+      return;
     },
   };
 });

@@ -1,10 +1,13 @@
 {
-  "name": "decky-plugin-template",
+  "name": "awim-deck",
   "version": "0.0.1",
-  "description": "A template to quickly create decky plugins from scratch, based on TypeScript and webpack",
+  "description": "Decky plugin for managing awim-client on Steam Deck",
   "type": "module",
   "scripts": {
-    "build": "rollup -c",
+    "build": "sh ./scripts/build-and-package.sh",
+    "build:frontend": "rollup -c",
+    "build:backend": "make -C backend",
+    "package": "sh ./scripts/package-plugin.sh",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -19,7 +22,7 @@
     "steam-deck",
     "deck"
   ],
-  "author": "You <you@you.tld>",
+  "author": "ergolyam <grisha765@tuta.io>",
   "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/SteamDeckHomebrew/decky-plugin-template/issues"
