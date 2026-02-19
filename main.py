@@ -102,7 +102,7 @@ class Plugin:
         self.error_code = None
 
     def _set_waiting_status(self, attempt: int):
-        self.connection_status = f"Waiting for server attempt: {attempt}"
+        self.connection_status = f"Wait for server attempt: {attempt}"
         self.waiting_attempt = attempt
         self.error_code = None
 
