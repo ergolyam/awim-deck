@@ -2,10 +2,16 @@ import asyncio
 import ipaddress
 import json
 import os
+import re
 from contextlib import suppress
 from typing import Any
 
 import decky
+
+WAITING_ATTEMPT_RE = re.compile(
+    r"timed out waiting for data from server(?:; attempt (\d+))?",
+    re.IGNORECASE,
+)
 
 
 class Plugin:
@@ -14,6 +20,9 @@ class Plugin:
         self.awim_process: asyncio.subprocess.Process | None = None
         self.awim_stdout_task: asyncio.Task[None] | None = None
         self.awim_stderr_task: asyncio.Task[None] | None = None
+        self.connection_status = "Stopped"
+        self.waiting_attempt: int | None = None
+        self.error_code: int | None = None
         self.config: dict[str, Any] = {
             "ip": "127.0.0.1",
             "port": 1242,
@@ -69,14 +78,52 @@ class Plugin:
             raise RuntimeError(str(error)) from error
 
     def _state(self) -> dict[str, Any]:
-        running = self._is_running()
+        self._refresh_process_state()
+        running = self.awim_process is not None
         pid: int | None = self.awim_process.pid if running and self.awim_process is not None else None
         return {
             "ip": self.config["ip"],
             "port": self.config["port"],
             "running": running,
             "pid": pid,
+            "status": self.connection_status,
+            "attempt": self.waiting_attempt,
+            "error_code": self.error_code,
         }
+
+    def _set_stopped_status(self):
+        self.connection_status = "Stopped"
+        self.waiting_attempt = None
+        self.error_code = None
+
+    def _set_connected_status(self):
+        self.connection_status = "Connected"
+        self.waiting_attempt = None
+        self.error_code = None
+
+    def _set_waiting_status(self, attempt: int):
+        self.connection_status = f"Waiting for server attempt: {attempt}"
+        self.waiting_attempt = attempt
+        self.error_code = None
+
+    def _set_error_status(self, code: int):
+        self.connection_status = f"Error code: {code}"
+        self.waiting_attempt = None
+        self.error_code = code
+
+    def _refresh_process_state(self):
+        if self.awim_process is None or self.awim_process.returncode is None:
+            return
+
+        code = self.awim_process.returncode
+        self.awim_process = None
+        if code == 0:
+            self._set_stopped_status()
+            decky.logger.info("awim exited with code 0")
+            return
+
+        self._set_error_status(code)
+        decky.logger.warning("awim exited with code %s", code)
 
     def _load_config(self) -> dict[str, Any]:
         defaults = {
@@ -133,17 +180,14 @@ class Plugin:
         raise FileNotFoundError("Could not find awim binary in bin/awim or backend/out/awim.")
 
     def _is_running(self) -> bool:
-        if self.awim_process is None:
-            return False
-        if self.awim_process.returncode is not None:
-            self.awim_process = None
-            return False
-        return True
+        self._refresh_process_state()
+        return self.awim_process is not None
 
     async def _start_awim(self):
         if self._is_running():
             return
 
+        self._set_waiting_status(1)
         awim_path = self._awim_path()
         binary_dir = os.path.dirname(awim_path)
         env = self._build_awim_env()
@@ -180,6 +224,7 @@ class Plugin:
             if self.awim_process.stderr is not None:
                 stderr = (await self.awim_process.stderr.read()).decode(errors="replace").strip()
             self.awim_process = None
+            self._set_error_status(code)
             details = " ".join(part for part in [stderr, stdout] if part)
             if details:
                 raise RuntimeError(
@@ -197,6 +242,7 @@ class Plugin:
     async def _stop_awim(self):
         if not self._is_running() or self.awim_process is None:
             self.awim_process = None
+            self._set_stopped_status()
             await self._cancel_stream_tasks()
             return
 
@@ -214,6 +260,7 @@ class Plugin:
             decky.logger.info("awim stopped with SIGKILL")
         finally:
             self.awim_process = None
+            self._set_stopped_status()
             await self._cancel_stream_tasks()
 
     async def _consume_stream(self, stream: asyncio.StreamReader | None, stream_name: str):
@@ -227,6 +274,27 @@ class Plugin:
             message = line.decode(errors="replace").strip()
             if message:
                 decky.logger.info("awim %s: %s", stream_name, message)
+                self._update_connection_status_from_log(message)
+
+    def _update_connection_status_from_log(self, message: str):
+        if re.fullmatch(r"Connected", message, re.IGNORECASE):
+            self._set_connected_status()
+            return
+
+        waiting_match = WAITING_ATTEMPT_RE.search(message)
+        if waiting_match is not None:
+            raw_attempt = waiting_match.group(1)
+            if raw_attempt is not None:
+                self._set_waiting_status(int(raw_attempt))
+            else:
+                next_attempt = 1 if self.waiting_attempt is None else self.waiting_attempt + 1
+                self._set_waiting_status(next_attempt)
+            return
+
+        lowered = message.lower()
+        if "connection reset" in lowered or "connection closed" in lowered:
+            next_attempt = 1 if self.waiting_attempt is None else self.waiting_attempt + 1
+            self._set_waiting_status(next_attempt)
 
     async def _cancel_stream_tasks(self):
         for task in [self.awim_stdout_task, self.awim_stderr_task]:

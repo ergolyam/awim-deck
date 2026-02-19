@@ -17,6 +17,9 @@ interface PluginState {
   port: number;
   running: boolean;
   pid: number | null;
+  status: string;
+  attempt: number | null;
+  error_code: number | null;
 }
 
 interface EditValueModalProps {
@@ -104,12 +107,22 @@ function Content() {
   const [isBusy, setIsBusy] = useState<boolean>(false);
 
   const refreshState = useCallback(async () => {
-    const next = await getState();
-    setState(next);
+    try {
+      const next = await getState();
+      setState(next);
+    } catch {
+      // Ignore refresh errors during periodic polling.
+    }
   }, []);
 
   useEffect(() => {
     void refreshState();
+    const intervalId = window.setInterval(() => {
+      void refreshState();
+    }, 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [refreshState]);
 
   const openIpModal = () => {
@@ -220,11 +233,7 @@ function Content() {
       </PanelSectionRow>
       <PanelSectionRow>
         <Field label="Status">
-          <div>
-            {state?.running
-              ? `Running${state.pid !== null ? ` (PID ${state.pid})` : ""}`
-              : "Stopped"}
-          </div>
+          <div>{state?.status ?? "Loading..."}</div>
         </Field>
       </PanelSectionRow>
       <PanelSectionRow>

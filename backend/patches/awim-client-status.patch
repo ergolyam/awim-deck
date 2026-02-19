@@ -1,0 +1,44 @@
+diff --git a/src/main.c b/src/main.c
+--- a/src/main.c
++++ b/src/main.c
+@@ -52,6 +52,9 @@ void display_help()
+ 
+ int main(int argc, char *argv[])
+ {
++	setvbuf(stdout, NULL, _IONBF, 0);
++	setvbuf(stderr, NULL, _IONBF, 0);
++
+ 	int address_from_args = 0;
+ 	for (int i = 1; i < argc; i++)
+ 	{
+diff --git a/src/udp.c b/src/udp.c
+--- a/src/udp.c
++++ b/src/udp.c
+@@ -45,6 +45,7 @@ void *udp_receive(void *p)
+     int16_t *udp_buf = NULL;
+     struct timespec ts = {.tv_sec = 0, .tv_nsec = 3000000};
+     int timeout_attempt = 1;
++    int connected = 0;
+     while (1)
+     {    
+         nanosleep(&ts, NULL);
+@@ -77,6 +78,7 @@ void *udp_receive(void *p)
+                     fprintf(stderr, "timed out waiting for data from server; attempt %i\n", timeout_attempt);
+                     timeout_attempt++;
+                     free(udp_buf);
++                    connected = 0;
+                     udp_buf = NULL;
+                     goto nowait;
+                 }
+@@ -84,6 +86,11 @@ void *udp_receive(void *p)
+             }
+             timeout_attempt = 1;
+             q_enqueue(data->q, udp_buf, capacity);
++            if (!connected)
++            {
++                puts("Connected");
++                connected = 1;
++            }
+             free(udp_buf);
+             udp_buf = NULL;
+         }

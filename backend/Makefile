@@ -4,6 +4,7 @@ ARCHIVE_PATH := $(BUILD_ROOT)/awim-client-main.tar.gz
 SOURCE_DIR := $(BUILD_ROOT)/awim-client-main
 OUTPUT_DIR := ./out
 OUTPUT_BIN := $(OUTPUT_DIR)/awim
+AWIM_PATCH := $(CURDIR)/patches/awim-client-status.patch
 
 .PHONY: all clean build-awim
 
@@ -14,6 +15,7 @@ build-awim:
 	mkdir -p $(BUILD_ROOT)
 	wget -O $(ARCHIVE_PATH) $(AWIM_REPO_URL)
 	tar xvf $(ARCHIVE_PATH) -C $(BUILD_ROOT)
+	patch -d $(SOURCE_DIR) -p1 < $(AWIM_PATCH)
 	$(MAKE) -C $(SOURCE_DIR)
 	mkdir -p $(OUTPUT_DIR)
 	cp $(SOURCE_DIR)/awim $(OUTPUT_BIN)
