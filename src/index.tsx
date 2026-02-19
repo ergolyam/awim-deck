@@ -233,6 +233,11 @@ function Content() {
   return (
     <PanelSection title="AWiM Deck">
       <PanelSectionRow>
+        <Field label="Status">
+          <div>{state?.status ?? "Loading..."}</div>
+        </Field>
+      </PanelSectionRow>
+      <PanelSectionRow>
         <Field
           label="IP address"
           description={settingsFieldsDisabled ? undefined : "Tap to edit."}
@@ -256,11 +261,6 @@ function Content() {
           onActivate={openPortModal}
         >
           <div>{state?.port ?? "Loading..."}</div>
-        </Field>
-      </PanelSectionRow>
-      <PanelSectionRow>
-        <Field label="Status">
-          <div>{state?.status ?? "Loading..."}</div>
         </Field>
       </PanelSectionRow>
       <PanelSectionRow>
