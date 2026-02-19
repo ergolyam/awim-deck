@@ -1,7 +1,8 @@
 {
   "name": "awim-deck",
+  "displayName": "AWiM Deck",
   "version": "0.0.1",
-  "description": "Decky plugin for managing awim-client on Steam Deck",
+  "description": "AWiM Deck plugin for managing awim-client on Steam Deck",
   "type": "module",
   "scripts": {
     "build": "sh ./scripts/build-and-package.sh",

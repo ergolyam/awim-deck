@@ -196,7 +196,7 @@ function Content() {
       setState(next);
     } catch (error) {
       toaster.toast({
-        title: "Failed to update AWiM state",
+        title: "Failed to update AWiM Deck state",
         body: getErrorMessage(error),
       });
       await refreshState();
@@ -206,7 +206,7 @@ function Content() {
   };
 
   return (
-    <PanelSection title="AWiM Client">
+    <PanelSection title="AWiM Deck">
       <PanelSectionRow>
         <Field
           label="IP address"
@@ -238,7 +238,7 @@ function Content() {
       </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
-          label="Enable AWiM"
+          label="Enable AWiM Deck"
           description="Runs or stops awim with selected IP and port."
           checked={state?.running ?? false}
           disabled={state === null || isBusy}
@@ -253,8 +253,8 @@ function Content() {
 
 export default definePlugin(() => {
   return {
-    name: "awim-deck",
-    titleView: <div className={staticClasses.Title}>awim-deck</div>,
+    name: "AWiM Deck",
+    titleView: <div className={staticClasses.Title}>AWiM Deck</div>,
     content: <Content />,
     icon: <FaMicrophone />,
     onDismount() {

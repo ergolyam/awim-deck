@@ -32,11 +32,11 @@ class Plugin:
         os.makedirs(decky.DECKY_PLUGIN_SETTINGS_DIR, exist_ok=True)
         self.settings_path = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "settings.json")
         self.config = self._load_config()
-        decky.logger.info("awim-deck initialized with %s:%s", self.config["ip"], self.config["port"])
+        decky.logger.info("AWiM Deck initialized with %s:%s", self.config["ip"], self.config["port"])
 
     async def _unload(self):
         await self._stop_awim()
-        decky.logger.info("awim-deck unloaded")
+        decky.logger.info("AWiM Deck unloaded")
 
     async def _uninstall(self):
         await self._stop_awim()
@@ -74,7 +74,7 @@ class Plugin:
                 await self._stop_awim()
             return self._state()
         except Exception as error:
-            decky.logger.exception("Failed to change AWiM state")
+            decky.logger.exception("Failed to change AWiM Deck state")
             raise RuntimeError(str(error)) from error
 
     def _state(self) -> dict[str, Any]:

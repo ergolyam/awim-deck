@@ -1,11 +1,11 @@
 {
-  "name": "awim-deck",
+  "name": "AWiM Deck",
   "author": "ergolyam",
   "flags": [],
   "api_version": 1,
   "publish": {
     "tags": ["audio", "network", "microphone"],
-    "description": "Decky plugin for managing awim-client.",
+    "description": "AWiM Deck plugin for managing awim-client.",
     "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
   }
 }
