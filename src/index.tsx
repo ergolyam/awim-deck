@@ -107,6 +107,9 @@ function EditValueModal({
 function Content() {
   const [state, setState] = useState<PluginState | null>(null);
   const [isBusy, setIsBusy] = useState<boolean>(false);
+  const settingsLocked = state?.running ?? false;
+  const settingsFieldsDisabled = state === null || settingsLocked;
+  const canEditSettings = state !== null && !isBusy && !settingsLocked;
 
   const refreshState = useCallback(async () => {
     try {
@@ -128,7 +131,7 @@ function Content() {
   }, [refreshState]);
 
   const openIpModal = () => {
-    if (state === null) {
+    if (!canEditSettings || state === null) {
       return;
     }
 
@@ -155,7 +158,7 @@ function Content() {
   };
 
   const openPortModal = () => {
-    if (state === null) {
+    if (!canEditSettings || state === null) {
       return;
     }
 
@@ -232,9 +235,10 @@ function Content() {
       <PanelSectionRow>
         <Field
           label="IP address"
-          description="Tap to edit."
-          highlightOnFocus
-          focusable
+          description={settingsFieldsDisabled ? undefined : "Tap to edit."}
+          disabled={settingsFieldsDisabled}
+          highlightOnFocus={canEditSettings}
+          focusable={canEditSettings}
           onClick={openIpModal}
           onActivate={openIpModal}
         >
@@ -244,9 +248,10 @@ function Content() {
       <PanelSectionRow>
         <Field
           label="Port"
-          description="Tap to edit."
-          highlightOnFocus
-          focusable
+          description={settingsFieldsDisabled ? undefined : "Tap to edit."}
+          disabled={settingsFieldsDisabled}
+          highlightOnFocus={canEditSettings}
+          focusable={canEditSettings}
           onClick={openPortModal}
           onActivate={openPortModal}
         >
@@ -261,9 +266,8 @@ function Content() {
       <PanelSectionRow>
         <ToggleField
           label="TCP Mode"
-          description="Adds --tcp-mode when launching awim. Applies on next start."
           checked={state?.tcp_mode ?? false}
-          disabled={state === null || isBusy}
+          disabled={state === null || isBusy || settingsLocked}
           onChange={(enabled) => {
             void onTcpModeToggle(enabled);
           }}
@@ -271,8 +275,7 @@ function Content() {
       </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
-          label="Enable AWiM Deck"
-          description="Runs or stops awim with selected IP and port."
+          label="Enable AWiM"
           checked={state?.running ?? false}
           disabled={state === null || isBusy}
           onChange={(enabled) => {
