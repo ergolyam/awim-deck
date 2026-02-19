@@ -29,6 +29,7 @@ class Plugin:
         self.config: dict[str, Any] = {
             "ip": "127.0.0.1",
             "port": 1242,
+            "tcp_mode": False,
         }
 
     async def _main(self):
@@ -69,6 +70,14 @@ class Plugin:
         self._save_config()
         return self._state()
 
+    async def set_tcp_mode(self, tcp_mode: bool) -> dict[str, Any]:
+        if not isinstance(tcp_mode, bool):
+            raise ValueError("tcp_mode must be a boolean value.")
+
+        self.config["tcp_mode"] = tcp_mode
+        self._save_config()
+        return self._state()
+
     async def set_enabled(self, enabled: bool) -> dict[str, Any]:
         try:
             if enabled:
@@ -88,6 +97,7 @@ class Plugin:
         return {
             "ip": self.config["ip"],
             "port": self.config["port"],
+            "tcp_mode": self.config["tcp_mode"],
             "running": running,
             "pid": pid,
             "status": self.connection_status,
@@ -149,6 +159,7 @@ class Plugin:
         defaults = {
             "ip": "127.0.0.1",
             "port": 1242,
+            "tcp_mode": False,
         }
         if not self.settings_path or not os.path.isfile(self.settings_path):
             return defaults
@@ -167,6 +178,10 @@ class Plugin:
         loaded_port = loaded.get("port")
         if isinstance(loaded_port, int) and self._is_valid_port(loaded_port):
             defaults["port"] = loaded_port
+
+        loaded_tcp_mode = loaded.get("tcp_mode")
+        if isinstance(loaded_tcp_mode, bool):
+            defaults["tcp_mode"] = loaded_tcp_mode
 
         return defaults
 
@@ -211,14 +226,13 @@ class Plugin:
         awim_path = self._awim_path()
         binary_dir = os.path.dirname(awim_path)
         env = self._build_awim_env()
+        args = ["./awim", "--ip", self.config["ip"], "--port", str(self.config["port"])]
+        if self.config["tcp_mode"]:
+            args.append("--tcp-mode")
 
         try:
             self.awim_process = await asyncio.create_subprocess_exec(
-                "./awim",
-                "--ip",
-                self.config["ip"],
-                "--port",
-                str(self.config["port"]),
+                *args,
                 cwd=binary_dir,
                 env=env,
                 stdout=asyncio.subprocess.PIPE,

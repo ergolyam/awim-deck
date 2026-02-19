@@ -15,6 +15,7 @@ import { FaMicrophone } from "react-icons/fa";
 interface PluginState {
   ip: string;
   port: number;
+  tcp_mode: boolean;
   running: boolean;
   pid: number | null;
   status: string;
@@ -35,6 +36,7 @@ const getState = callable<[], PluginState>("get_state");
 const validateIp = callable<[address: string], boolean>("validate_ip");
 const validatePort = callable<[port: number], boolean>("validate_port");
 const updateConfig = callable<[address: string, port: number], PluginState>("update_config");
+const setTcpMode = callable<[enabled: boolean], PluginState>("set_tcp_mode");
 const setEnabled = callable<[enabled: boolean], PluginState>("set_enabled");
 
 function getErrorMessage(error: unknown): string {
@@ -205,6 +207,26 @@ function Content() {
     }
   };
 
+  const onTcpModeToggle = async (enabled: boolean) => {
+    if (state === null || isBusy) {
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      const next = await setTcpMode(enabled);
+      setState(next);
+    } catch (error) {
+      toaster.toast({
+        title: "Failed to update TCP Mode",
+        body: getErrorMessage(error),
+      });
+      await refreshState();
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   return (
     <PanelSection title="AWiM Deck">
       <PanelSectionRow>
@@ -235,6 +257,17 @@ function Content() {
         <Field label="Status">
           <div>{state?.status ?? "Loading..."}</div>
         </Field>
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <ToggleField
+          label="TCP Mode"
+          description="Adds --tcp-mode when launching awim. Applies on next start."
+          checked={state?.tcp_mode ?? false}
+          disabled={state === null || isBusy}
+          onChange={(enabled) => {
+            void onTcpModeToggle(enabled);
+          }}
+        />
       </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
