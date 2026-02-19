@@ -3,6 +3,7 @@ import ipaddress
 import json
 import os
 import re
+import time
 from contextlib import suppress
 from typing import Any
 
@@ -12,6 +13,7 @@ WAITING_ATTEMPT_RE = re.compile(
     r"timed out waiting for data from server(?:; attempt (\d+))?",
     re.IGNORECASE,
 )
+WAITING_TO_CONNECTED_QUIET_SECONDS = 1.5
 
 
 class Plugin:
@@ -23,6 +25,7 @@ class Plugin:
         self.connection_status = "Stopped"
         self.waiting_attempt: int | None = None
         self.error_code: int | None = None
+        self.last_waiting_signal_at: float | None = None
         self.config: dict[str, Any] = {
             "ip": "127.0.0.1",
             "port": 1242,
@@ -79,6 +82,7 @@ class Plugin:
 
     def _state(self) -> dict[str, Any]:
         self._refresh_process_state()
+        self._infer_connected_after_waiting_quiet_period()
         running = self.awim_process is not None
         pid: int | None = self.awim_process.pid if running and self.awim_process is not None else None
         return {
@@ -95,21 +99,25 @@ class Plugin:
         self.connection_status = "Stopped"
         self.waiting_attempt = None
         self.error_code = None
+        self.last_waiting_signal_at = None
 
     def _set_connected_status(self):
         self.connection_status = "Connected"
         self.waiting_attempt = None
         self.error_code = None
+        self.last_waiting_signal_at = None
 
     def _set_waiting_status(self, attempt: int):
         self.connection_status = f"Wait for server attempt: {attempt}"
         self.waiting_attempt = attempt
         self.error_code = None
+        self.last_waiting_signal_at = time.monotonic()
 
     def _set_error_status(self, code: int):
         self.connection_status = f"Error code: {code}"
         self.waiting_attempt = None
         self.error_code = code
+        self.last_waiting_signal_at = None
 
     def _refresh_process_state(self):
         if self.awim_process is None or self.awim_process.returncode is None:
@@ -124,6 +132,18 @@ class Plugin:
 
         self._set_error_status(code)
         decky.logger.warning("awim exited with code %s", code)
+
+    def _infer_connected_after_waiting_quiet_period(self):
+        if self.awim_process is None:
+            return
+        if not self.connection_status.startswith("Wait for server attempt:"):
+            return
+        if self.last_waiting_signal_at is None:
+            return
+        quiet_seconds = time.monotonic() - self.last_waiting_signal_at
+        if quiet_seconds < WAITING_TO_CONNECTED_QUIET_SECONDS:
+            return
+        self._set_connected_status()
 
     def _load_config(self) -> dict[str, Any]:
         defaults = {
