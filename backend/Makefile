@@ -1,4 +1,4 @@
-AWIM_COMMIT := 98def5b028d62feaf6e5fbbf44964d171ca4e751
+AWIM_COMMIT := 522b95fa146152efa74cb84bf54adf09a72c5743
 AWIM_REPO_URL := https://github.com/rotlir/awim-client/archive/$(AWIM_COMMIT).tar.gz
 BUILD_ROOT := /tmp/awim-client-build
 ARCHIVE_PATH := $(BUILD_ROOT)/awim-client-$(AWIM_COMMIT).tar.gz
