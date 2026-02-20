@@ -231,13 +231,14 @@ class Plugin:
             args.append("--tcp-mode")
 
         try:
-            self.awim_process = await asyncio.create_subprocess_exec(
+            process = await asyncio.create_subprocess_exec(
                 *args,
                 cwd=binary_dir,
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
+            self.awim_process = process
         except FileNotFoundError as error:
             if os.path.isfile(awim_path):
                 raise RuntimeError(
@@ -251,18 +252,19 @@ class Plugin:
         await asyncio.sleep(0.4)
         code: int | None = None
         try:
-            code = await asyncio.wait_for(self.awim_process.wait(), timeout=0.05)
+            code = await asyncio.wait_for(process.wait(), timeout=0.05)
         except TimeoutError:
             code = None
 
         if code is not None:
             stdout = ""
             stderr = ""
-            if self.awim_process.stdout is not None:
-                stdout = (await self.awim_process.stdout.read()).decode(errors="replace").strip()
-            if self.awim_process.stderr is not None:
-                stderr = (await self.awim_process.stderr.read()).decode(errors="replace").strip()
-            self.awim_process = None
+            if process.stdout is not None:
+                stdout = (await process.stdout.read()).decode(errors="replace").strip()
+            if process.stderr is not None:
+                stderr = (await process.stderr.read()).decode(errors="replace").strip()
+            if self.awim_process is process:
+                self.awim_process = None
             details = " ".join(part for part in [stderr, stdout] if part)
 
             if code == 0:
@@ -287,10 +289,13 @@ class Plugin:
                 decky.logger.warning("awim exited immediately with code %s", code)
             return
 
-        self.awim_stdout_task = asyncio.create_task(self._consume_stream(self.awim_process.stdout, "stdout"))
-        self.awim_stderr_task = asyncio.create_task(self._consume_stream(self.awim_process.stderr, "stderr"))
+        if self.awim_process is not process:
+            return
 
-        decky.logger.info("awim started with PID %s", self.awim_process.pid)
+        self.awim_stdout_task = asyncio.create_task(self._consume_stream(process.stdout, "stdout"))
+        self.awim_stderr_task = asyncio.create_task(self._consume_stream(process.stderr, "stderr"))
+
+        decky.logger.info("awim started with PID %s", process.pid)
 
     async def _stop_awim(self):
         if not self._is_running() or self.awim_process is None:
