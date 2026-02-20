@@ -249,8 +249,13 @@ class Plugin:
             raise RuntimeError(f"OS error while starting awim: {error}") from error
 
         await asyncio.sleep(0.4)
-        if self.awim_process.returncode is not None:
-            code = self.awim_process.returncode
+        code: int | None = None
+        try:
+            code = await asyncio.wait_for(self.awim_process.wait(), timeout=0.05)
+        except TimeoutError:
+            code = None
+
+        if code is not None:
             stdout = ""
             stderr = ""
             if self.awim_process.stdout is not None:
@@ -258,15 +263,29 @@ class Plugin:
             if self.awim_process.stderr is not None:
                 stderr = (await self.awim_process.stderr.read()).decode(errors="replace").strip()
             self.awim_process = None
-            self._set_error_status(code)
             details = " ".join(part for part in [stderr, stdout] if part)
+
+            if code == 0:
+                self._set_stopped_status()
+                if details:
+                    decky.logger.info("awim exited immediately with code 0: %s", details)
+                else:
+                    decky.logger.info("awim exited immediately with code 0")
+                return
+
+            self._set_error_status(code)
             if details:
-                raise RuntimeError(
-                    f"awim exited immediately with code {code}: {details} "
-                    f"(PIPEWIRE_MODULE_DIR={env.get('PIPEWIRE_MODULE_DIR', '')}, "
-                    f"SPA_PLUGIN_DIR={env.get('SPA_PLUGIN_DIR', '')})"
+                decky.logger.warning(
+                    "awim exited immediately with code %s: %s "
+                    "(PIPEWIRE_MODULE_DIR=%s, SPA_PLUGIN_DIR=%s)",
+                    code,
+                    details,
+                    env.get("PIPEWIRE_MODULE_DIR", ""),
+                    env.get("SPA_PLUGIN_DIR", ""),
                 )
-            raise RuntimeError(f"awim exited immediately with code {code}.")
+            else:
+                decky.logger.warning("awim exited immediately with code %s", code)
+            return
 
         self.awim_stdout_task = asyncio.create_task(self._consume_stream(self.awim_process.stdout, "stdout"))
         self.awim_stderr_task = asyncio.create_task(self._consume_stream(self.awim_process.stderr, "stderr"))

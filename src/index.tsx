@@ -199,6 +199,7 @@ function Content() {
     try {
       const next = await setEnabled(enabled);
       setState(next);
+      await refreshState();
     } catch (error) {
       toaster.toast({
         title: "Failed to update AWiM Deck state",
@@ -275,6 +276,7 @@ function Content() {
       </PanelSectionRow>
       <PanelSectionRow>
         <ToggleField
+          key={`awim-enabled-${state?.running ? "on" : "off"}-${isBusy ? "busy" : "idle"}`}
           label="Enable AWiM"
           checked={state?.running ?? false}
           disabled={state === null || isBusy}
