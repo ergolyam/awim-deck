@@ -21,7 +21,6 @@ WAITING_ATTEMPT_RE = re.compile(
 )
 WAITING_STATUS_PREFIX = "Wait for server attempt: "
 WAITING_TO_CONNECTED_QUIET_SECONDS = 1.5
-AWIM_STARTUP_EXIT_TIMEOUT_SECONDS = 1.2
 AWIM_STOP_TIMEOUT_SECONDS = 3.0
 PIPEWIRE_MODULE_DIR_CANDIDATES = [
     "/usr/lib/pipewire-0.3",
@@ -294,69 +293,11 @@ class Plugin:
         self.awim_stdout_task = asyncio.create_task(self._consume_stream(process.stdout, "stdout"))
         self.awim_stderr_task = asyncio.create_task(self._consume_stream(process.stderr, "stderr"))
 
-        code = await self._wait_for_exit(process, AWIM_STARTUP_EXIT_TIMEOUT_SECONDS)
-        if code is not None:
-            await self._handle_early_exit(process, code, env)
-            return
-
         if self.awim_process is not process:
             return
 
         self.awim_exit_task = asyncio.create_task(self._watch_process_exit(process))
         decky.logger.info("awim started with PID %s", process.pid)
-
-    async def _wait_for_exit(
-        self,
-        process: asyncio.subprocess.Process,
-        timeout_seconds: float,
-    ) -> int | None:
-        try:
-            return await asyncio.wait_for(process.wait(), timeout=timeout_seconds)
-        except TimeoutError:
-            return None
-
-    async def _handle_early_exit(
-        self,
-        process: asyncio.subprocess.Process,
-        code: int,
-        env: dict[str, str],
-    ):
-        details = await self._read_process_details(process)
-        if self.awim_process is process:
-            self.awim_process = None
-
-        await self._cancel_process_tasks()
-
-        if code == 0:
-            self._set_stopped_status()
-            if details:
-                decky.logger.info("awim exited immediately with code 0: %s", details)
-            else:
-                decky.logger.info("awim exited immediately with code 0")
-            return
-
-        self._set_error_status(code)
-        if details:
-            decky.logger.warning(
-                "awim exited immediately with code %s: %s "
-                "(PIPEWIRE_MODULE_DIR=%s, SPA_PLUGIN_DIR=%s)",
-                code,
-                details,
-                env.get("PIPEWIRE_MODULE_DIR", ""),
-                env.get("SPA_PLUGIN_DIR", ""),
-            )
-        else:
-            decky.logger.warning("awim exited immediately with code %s", code)
-
-    async def _read_process_details(self, process: asyncio.subprocess.Process) -> str:
-        stdout = ""
-        stderr = ""
-        if process.stdout is not None:
-            stdout = (await process.stdout.read()).decode(errors="replace").strip()
-        if process.stderr is not None:
-            stderr = (await process.stderr.read()).decode(errors="replace").strip()
-
-        return " ".join(part for part in [stderr, stdout] if part)
 
     async def _watch_process_exit(self, process: asyncio.subprocess.Process):
         current_task = asyncio.current_task()
