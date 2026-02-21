@@ -24,7 +24,7 @@
     "deck"
   ],
   "author": "ergolyam <grisha765@tuta.io>",
-  "license": "BSD-3-Clause",
+  "license": "GPL-3.0-only",
   "bugs": {
     "url": "https://github.com/ergolyam/awim-deck/issues"
   },
