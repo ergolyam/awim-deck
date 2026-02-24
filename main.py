@@ -49,6 +49,7 @@ class Plugin:
         self.waiting_attempt: int | None = None
         self.error_code: int | None = None
         self.last_waiting_signal_at: float | None = None
+        self._saw_server_connect_failure = False
 
     async def _main(self):
         os.makedirs(decky.DECKY_PLUGIN_SETTINGS_DIR, exist_ok=True)
@@ -152,6 +153,9 @@ class Plugin:
     def _set_error_status(self, code: int):
         self._set_status(f"Error code: {code}", error_code=code)
 
+    def _set_server_not_found_status(self):
+        self._set_status("server not found", error_code=255)
+
     def _apply_exit_code(self, code: int, details: str = ""):
         details = details.strip()
         if code == 0:
@@ -162,7 +166,10 @@ class Plugin:
                 decky.logger.info("awim exited with code 0")
             return
 
-        self._set_error_status(code)
+        if code == 255 and self._saw_server_connect_failure:
+            self._set_server_not_found_status()
+        else:
+            self._set_error_status(code)
         if details:
             decky.logger.warning("awim exited with code %s: %s", code, details)
         else:
@@ -271,6 +278,7 @@ class Plugin:
 
         self._set_waiting_status(1)
         self._stopping_awim = False
+        self._saw_server_connect_failure = False
 
         try:
             process = await asyncio.create_subprocess_exec(
@@ -357,6 +365,10 @@ class Plugin:
             message = line.decode(errors="replace").strip()
             if not message:
                 continue
+
+            lowered = message.lower()
+            if stream_name == "stderr" and "failed connecting to server" in lowered:
+                self._saw_server_connect_failure = True
 
             decky.logger.info("awim %s: %s", stream_name, message)
             self._update_connection_status_from_log(message)
