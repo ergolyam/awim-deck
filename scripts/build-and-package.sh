@@ -20,4 +20,6 @@ else
   make -C backend
 fi
 
+python3 -m py_compile "$ROOT_DIR/main.py"
+
 sh ./scripts/package-plugin.sh
