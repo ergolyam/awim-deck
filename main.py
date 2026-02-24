@@ -22,6 +22,63 @@ WAITING_ATTEMPT_RE = re.compile(
 WAITING_STATUS_PREFIX = "Wait for server attempt: "
 WAITING_TO_CONNECTED_QUIET_SECONDS = 1.5
 AWIM_STOP_TIMEOUT_SECONDS = 3.0
+ERROR_STATUS_RULES = [
+    {
+        "exit_code": 255,
+        "marker": "failed connecting to server",
+        "status": "server not found"
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed creating tcp socket",
+        "status": "tcp socket creation failed"
+    },
+    {
+        "exit_code": 255,
+        "marker": "error while creating socket",
+        "status": "udp socket creation failed"
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed setting socket send timeout",
+        "status": "socket send timeout setup failed",
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed setting socket receive timeout",
+        "status": "socket receive timeout setup failed",
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed creating queue",
+        "status": "audio queue initialization failed"
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed creating main loop",
+        "status": "pipewire main loop initialization failed",
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed creating context",
+        "status": "pipewire context initialization failed"
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed loading loopback module",
+        "status": "pipewire loopback module load failed",
+    },
+    {
+        "exit_code": 255,
+        "marker": "error connecting stream",
+        "status": "pipewire stream connection failed"
+    },
+    {
+        "exit_code": 255,
+        "marker": "failed sending data to server",
+        "status": "failed sending data to server"
+    },
+]
 PIPEWIRE_MODULE_DIR_CANDIDATES = [
     "/usr/lib/pipewire-0.3",
     "/usr/lib64/pipewire-0.3",
@@ -49,7 +106,7 @@ class Plugin:
         self.waiting_attempt: int | None = None
         self.error_code: int | None = None
         self.last_waiting_signal_at: float | None = None
-        self._saw_server_connect_failure = False
+        self._error_markers: set[str] = set()
 
     async def _main(self):
         os.makedirs(decky.DECKY_PLUGIN_SETTINGS_DIR, exist_ok=True)
@@ -151,10 +208,14 @@ class Plugin:
         )
 
     def _set_error_status(self, code: int):
-        self._set_status(f"Error code: {code}", error_code=code)
+        status, error_code = self._resolve_error_status(code)
+        self._set_status(status, error_code=error_code)
 
-    def _set_server_not_found_status(self):
-        self._set_status("server not found", error_code=255)
+    def _resolve_error_status(self, code: int) -> tuple[str, int]:
+        for rule in ERROR_STATUS_RULES:
+            if code == rule["exit_code"] and str(rule["marker"]) in self._error_markers:
+                return str(rule["status"]), code
+        return f"Error code: {code}", code
 
     def _apply_exit_code(self, code: int, details: str = ""):
         details = details.strip()
@@ -166,10 +227,7 @@ class Plugin:
                 decky.logger.info("awim exited with code 0")
             return
 
-        if code == 255 and self._saw_server_connect_failure:
-            self._set_server_not_found_status()
-        else:
-            self._set_error_status(code)
+        self._set_error_status(code)
         if details:
             decky.logger.warning("awim exited with code %s: %s", code, details)
         else:
@@ -278,7 +336,7 @@ class Plugin:
 
         self._set_waiting_status(1)
         self._stopping_awim = False
-        self._saw_server_connect_failure = False
+        self._error_markers.clear()
 
         try:
             process = await asyncio.create_subprocess_exec(
@@ -366,9 +424,8 @@ class Plugin:
             if not message:
                 continue
 
-            lowered = message.lower()
-            if stream_name == "stderr" and "failed connecting to server" in lowered:
-                self._saw_server_connect_failure = True
+            if stream_name == "stderr":
+                self._collect_error_markers(message)
 
             decky.logger.info("awim %s: %s", stream_name, message)
             self._update_connection_status_from_log(message)
@@ -388,6 +445,13 @@ class Plugin:
         lowered = message.lower()
         if "connection reset" in lowered or "connection closed" in lowered:
             self._set_waiting_status(self._next_waiting_attempt())
+
+    def _collect_error_markers(self, message: str):
+        lowered = message.lower()
+        for rule in ERROR_STATUS_RULES:
+            marker = str(rule["marker"])
+            if marker in lowered:
+                self._error_markers.add(marker)
 
     def _next_waiting_attempt(self) -> int:
         if self.waiting_attempt is None:
