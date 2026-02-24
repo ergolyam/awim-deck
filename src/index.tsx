@@ -1,6 +1,8 @@
 import {
+  ButtonItem,
   ConfirmModal,
   Field,
+  Navigation,
   PanelSection,
   PanelSectionRow,
   TextField,
@@ -38,6 +40,7 @@ const validatePort = callable<[port: number], boolean>("validate_port");
 const updateConfig = callable<[address: string, port: number], PluginState>("update_config");
 const setTcpMode = callable<[enabled: boolean], PluginState>("set_tcp_mode");
 const setEnabled = callable<[enabled: boolean], PluginState>("set_enabled");
+const README_URL = "https://github.com/ergolyam/awim-deck/blob/main/readme.md#quick-start";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -231,6 +234,17 @@ function Content() {
     }
   };
 
+  const openReadme = () => {
+    try {
+      Navigation.NavigateToExternalWeb(README_URL);
+    } catch {
+      toaster.toast({
+        title: "Failed to open README",
+        body: "Could not open GitHub page in Steam browser.",
+      });
+    }
+  };
+
   return (
     <PanelSection title="AWiM Deck">
       <PanelSectionRow>
@@ -284,6 +298,16 @@ function Content() {
             void onToggle(enabled);
           }}
         />
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={() => {
+            openReadme();
+          }}
+        >
+          Quick Start
+        </ButtonItem>
       </PanelSectionRow>
     </PanelSection>
   );
