@@ -10,90 +10,90 @@ from typing import Any
 import decky
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "ip": "127.0.0.1",
-    "port": 1242,
-    "tcp_mode": False,
+    'ip': '127.0.0.1',
+    'port': 1242,
+    'tcp_mode': False,
 }
 
 WAITING_ATTEMPT_RE = re.compile(
-    r"timed out waiting for data from server(?:; attempt (\d+))?",
+    r'timed out waiting for data from server(?:; attempt (\d+))?',
     re.IGNORECASE,
 )
-WAITING_STATUS_PREFIX = "Wait for server attempt: "
+WAITING_STATUS_PREFIX = 'Wait for server attempt: '
 WAITING_TO_CONNECTED_QUIET_SECONDS = 1.5
 AWIM_STOP_TIMEOUT_SECONDS = 3.0
 ERROR_STATUS_RULES = [
     {
-        "exit_code": 255,
-        "marker": "failed connecting to server",
-        "status": "server not found"
+        'exit_code': 255,
+        'marker': 'failed connecting to server',
+        'status': 'server not found'
     },
     {
-        "exit_code": 255,
-        "marker": "failed creating tcp socket",
-        "status": "tcp socket creation failed"
+        'exit_code': 255,
+        'marker': 'failed creating tcp socket',
+        'status': 'tcp socket creation failed'
     },
     {
-        "exit_code": 255,
-        "marker": "error while creating socket",
-        "status": "udp socket creation failed"
+        'exit_code': 255,
+        'marker': 'error while creating socket',
+        'status': 'udp socket creation failed'
     },
     {
-        "exit_code": 255,
-        "marker": "failed setting socket send timeout",
-        "status": "socket send timeout setup failed",
+        'exit_code': 255,
+        'marker': 'failed setting socket send timeout',
+        'status': 'socket send timeout setup failed',
     },
     {
-        "exit_code": 255,
-        "marker": "failed setting socket receive timeout",
-        "status": "socket receive timeout setup failed",
+        'exit_code': 255,
+        'marker': 'failed setting socket receive timeout',
+        'status': 'socket receive timeout setup failed',
     },
     {
-        "exit_code": 255,
-        "marker": "failed creating queue",
-        "status": "audio queue initialization failed"
+        'exit_code': 255,
+        'marker': 'failed creating queue',
+        'status': 'audio queue initialization failed'
     },
     {
-        "exit_code": 255,
-        "marker": "failed creating main loop",
-        "status": "pipewire main loop initialization failed",
+        'exit_code': 255,
+        'marker': 'failed creating main loop',
+        'status': 'pipewire main loop initialization failed',
     },
     {
-        "exit_code": 255,
-        "marker": "failed creating context",
-        "status": "pipewire context initialization failed"
+        'exit_code': 255,
+        'marker': 'failed creating context',
+        'status': 'pipewire context initialization failed'
     },
     {
-        "exit_code": 255,
-        "marker": "failed loading loopback module",
-        "status": "pipewire loopback module load failed",
+        'exit_code': 255,
+        'marker': 'failed loading loopback module',
+        'status': 'pipewire loopback module load failed',
     },
     {
-        "exit_code": 255,
-        "marker": "error connecting stream",
-        "status": "pipewire stream connection failed"
+        'exit_code': 255,
+        'marker': 'error connecting stream',
+        'status': 'pipewire stream connection failed'
     },
     {
-        "exit_code": 255,
-        "marker": "failed sending data to server",
-        "status": "failed sending data to server"
+        'exit_code': 255,
+        'marker': 'failed sending data to server',
+        'status': 'failed sending data to server'
     },
 ]
 PIPEWIRE_MODULE_DIR_CANDIDATES = [
-    "/usr/lib/pipewire-0.3",
-    "/usr/lib64/pipewire-0.3",
-    "/lib/pipewire-0.3",
+    '/usr/lib/pipewire-0.3',
+    '/usr/lib64/pipewire-0.3',
+    '/lib/pipewire-0.3',
 ]
 SPA_PLUGIN_DIR_CANDIDATES = [
-    "/usr/lib/spa-0.2",
-    "/usr/lib64/spa-0.2",
-    "/lib/spa-0.2",
+    '/usr/lib/spa-0.2',
+    '/usr/lib64/spa-0.2',
+    '/lib/spa-0.2',
 ]
 
 
 class Plugin:
     def __init__(self):
-        self.settings_path = ""
+        self.settings_path = ''
         self.config: dict[str, Any] = DEFAULT_CONFIG.copy()
 
         self.awim_process: asyncio.subprocess.Process | None = None
@@ -102,7 +102,7 @@ class Plugin:
         self.awim_exit_task: asyncio.Task[None] | None = None
         self._stopping_awim = False
 
-        self.connection_status = "Stopped"
+        self.connection_status = 'Stopped'
         self.waiting_attempt: int | None = None
         self.error_code: int | None = None
         self.last_waiting_signal_at: float | None = None
@@ -110,13 +110,13 @@ class Plugin:
 
     async def _main(self):
         os.makedirs(decky.DECKY_PLUGIN_SETTINGS_DIR, exist_ok=True)
-        self.settings_path = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "settings.json")
+        self.settings_path = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, 'settings.json')
         self.config = self._load_config()
-        decky.logger.info("AWiM Deck initialized with %s:%s", self.config["ip"], self.config["port"])
+        decky.logger.info('AWiM Deck initialized with %s:%s', self.config['ip'], self.config['port'])
 
     async def _unload(self):
         await self._stop_awim()
-        decky.logger.info("AWiM Deck unloaded")
+        decky.logger.info('AWiM Deck unloaded')
 
     async def _uninstall(self):
         await self._stop_awim()
@@ -136,21 +136,21 @@ class Plugin:
 
     async def update_config(self, address: str, port: int) -> dict[str, Any]:
         if not self._is_valid_ip(address):
-            raise ValueError("IP must be a valid IPv4 or IPv6 address.")
+            raise ValueError('IP must be a valid IPv4 or IPv6 address.')
 
         if not self._is_valid_port(port):
-            raise ValueError("Port must be in range 1024-65535.")
+            raise ValueError('Port must be in range 1024-65535.')
 
-        self.config["ip"] = address
-        self.config["port"] = port
+        self.config['ip'] = address
+        self.config['port'] = port
         self._save_config()
         return self._state()
 
     async def set_tcp_mode(self, tcp_mode: bool) -> dict[str, Any]:
         if not isinstance(tcp_mode, bool):
-            raise ValueError("tcp_mode must be a boolean value.")
+            raise ValueError('tcp_mode must be a boolean value.')
 
-        self.config["tcp_mode"] = tcp_mode
+        self.config['tcp_mode'] = tcp_mode
         self._save_config()
         return self._state()
 
@@ -162,7 +162,7 @@ class Plugin:
                 await self._stop_awim()
             return self._state()
         except Exception as error:
-            decky.logger.exception("Failed to change AWiM Deck state")
+            decky.logger.exception('Failed to change AWiM Deck state')
             raise RuntimeError(str(error)) from error
 
     def _state(self) -> dict[str, Any]:
@@ -171,14 +171,14 @@ class Plugin:
 
         process = self.awim_process
         return {
-            "ip": self.config["ip"],
-            "port": self.config["port"],
-            "tcp_mode": self.config["tcp_mode"],
-            "running": process is not None,
-            "pid": process.pid if process is not None else None,
-            "status": self.connection_status,
-            "attempt": self.waiting_attempt,
-            "error_code": self.error_code,
+            'ip': self.config['ip'],
+            'port': self.config['port'],
+            'tcp_mode': self.config['tcp_mode'],
+            'running': process is not None,
+            'pid': process.pid if process is not None else None,
+            'status': self.connection_status,
+            'attempt': self.waiting_attempt,
+            'error_code': self.error_code,
         }
 
     def _set_status(
@@ -195,14 +195,14 @@ class Plugin:
         self.last_waiting_signal_at = time.monotonic() if mark_waiting else None
 
     def _set_stopped_status(self):
-        self._set_status("Stopped")
+        self._set_status('Stopped')
 
     def _set_connected_status(self):
-        self._set_status("Connected")
+        self._set_status('Connected')
 
     def _set_waiting_status(self, attempt: int):
         self._set_status(
-            f"{WAITING_STATUS_PREFIX}{attempt}",
+            f'{WAITING_STATUS_PREFIX}{attempt}',
             waiting_attempt=attempt,
             mark_waiting=True,
         )
@@ -213,25 +213,25 @@ class Plugin:
 
     def _resolve_error_status(self, code: int) -> tuple[str, int]:
         for rule in ERROR_STATUS_RULES:
-            if code == rule["exit_code"] and str(rule["marker"]) in self._error_markers:
-                return str(rule["status"]), code
-        return f"Error code: {code}", code
+            if code == rule['exit_code'] and str(rule['marker']) in self._error_markers:
+                return str(rule['status']), code
+        return f'Error code: {code}', code
 
-    def _apply_exit_code(self, code: int, details: str = ""):
+    def _apply_exit_code(self, code: int, details: str = ''):
         details = details.strip()
         if code == 0:
             self._set_stopped_status()
             if details:
-                decky.logger.info("awim exited with code 0: %s", details)
+                decky.logger.info('awim exited with code 0: %s', details)
             else:
-                decky.logger.info("awim exited with code 0")
+                decky.logger.info('awim exited with code 0')
             return
 
         self._set_error_status(code)
         if details:
-            decky.logger.warning("awim exited with code %s: %s", code, details)
+            decky.logger.warning('awim exited with code %s: %s', code, details)
         else:
-            decky.logger.warning("awim exited with code %s", code)
+            decky.logger.warning('awim exited with code %s', code)
 
     def _refresh_process_state(self):
         process = self.awim_process
@@ -264,31 +264,31 @@ class Plugin:
             return config
 
         try:
-            with open(self.settings_path, "r", encoding="utf-8") as file:
+            with open(self.settings_path, 'r', encoding='utf-8') as file:
                 loaded = json.load(file)
         except (OSError, json.JSONDecodeError) as error:
-            decky.logger.warning("Failed to read settings: %s", error)
+            decky.logger.warning('Failed to read settings: %s', error)
             return config
 
         if not isinstance(loaded, dict):
             return config
 
-        address = loaded.get("ip")
+        address = loaded.get('ip')
         if isinstance(address, str) and self._is_valid_ip(address):
-            config["ip"] = address
+            config['ip'] = address
 
-        loaded_port = loaded.get("port")
+        loaded_port = loaded.get('port')
         if isinstance(loaded_port, int) and self._is_valid_port(loaded_port):
-            config["port"] = loaded_port
+            config['port'] = loaded_port
 
-        loaded_tcp_mode = loaded.get("tcp_mode")
+        loaded_tcp_mode = loaded.get('tcp_mode')
         if isinstance(loaded_tcp_mode, bool):
-            config["tcp_mode"] = loaded_tcp_mode
+            config['tcp_mode'] = loaded_tcp_mode
 
         return config
 
     def _save_config(self):
-        with open(self.settings_path, "w", encoding="utf-8") as file:
+        with open(self.settings_path, 'w', encoding='utf-8') as file:
             json.dump(self.config, file, indent=2)
 
     @staticmethod
@@ -309,14 +309,14 @@ class Plugin:
 
     def _awim_path(self) -> str:
         candidates = [
-            os.path.join(decky.DECKY_PLUGIN_DIR, "bin", "awim"),
-            os.path.join(decky.DECKY_PLUGIN_DIR, "backend", "out", "awim"),
+            os.path.join(decky.DECKY_PLUGIN_DIR, 'bin', 'awim'),
+            os.path.join(decky.DECKY_PLUGIN_DIR, 'backend', 'out', 'awim'),
         ]
         for path in candidates:
             if os.path.isfile(path):
                 return path
 
-        raise FileNotFoundError("Could not find awim binary in bin/awim or backend/out/awim.")
+        raise FileNotFoundError('Could not find awim binary in bin/awim or backend/out/awim.')
 
     def _is_running(self) -> bool:
         self._refresh_process_state()
@@ -330,9 +330,9 @@ class Plugin:
 
         awim_path = self._awim_path()
         env = self._build_awim_env()
-        args = [awim_path, "--ip", self.config["ip"], "--port", str(self.config["port"])]
-        if self.config["tcp_mode"]:
-            args.append("--tcp-mode")
+        args = [awim_path, '--ip', self.config['ip'], '--port', str(self.config['port'])]
+        if self.config['tcp_mode']:
+            args.append('--tcp-mode')
 
         self._set_waiting_status(1)
         self._stopping_awim = False
@@ -348,22 +348,22 @@ class Plugin:
         except FileNotFoundError as error:
             if os.path.isfile(awim_path):
                 raise RuntimeError(
-                    "awim exists but failed to start. Likely incompatible binary for SteamOS "
-                    "(libc/architecture mismatch). Rebuild backend in Decky Docker/holo-base."
+                    'awim exists but failed to start. Likely incompatible binary for SteamOS '
+                    '(libc/architecture mismatch). Rebuild backend in Decky Docker/holo-base.'
                 ) from error
-            raise RuntimeError("awim binary was not found in plugin bin directory.") from error
+            raise RuntimeError('awim binary was not found in plugin bin directory.') from error
         except OSError as error:
-            raise RuntimeError(f"OS error while starting awim: {error}") from error
+            raise RuntimeError(f'OS error while starting awim: {error}') from error
 
         self.awim_process = process
-        self.awim_stdout_task = asyncio.create_task(self._consume_stream(process.stdout, "stdout"))
-        self.awim_stderr_task = asyncio.create_task(self._consume_stream(process.stderr, "stderr"))
+        self.awim_stdout_task = asyncio.create_task(self._consume_stream(process.stdout, 'stdout'))
+        self.awim_stderr_task = asyncio.create_task(self._consume_stream(process.stderr, 'stderr'))
 
         if self.awim_process is not process:
             return
 
         self.awim_exit_task = asyncio.create_task(self._watch_process_exit(process))
-        decky.logger.info("awim started with PID %s", process.pid)
+        decky.logger.info('awim started with PID %s', process.pid)
 
     async def _watch_process_exit(self, process: asyncio.subprocess.Process):
         current_task = asyncio.current_task()
@@ -399,12 +399,12 @@ class Plugin:
 
         try:
             await asyncio.wait_for(process.wait(), timeout=AWIM_STOP_TIMEOUT_SECONDS)
-            decky.logger.info("awim stopped with SIGTERM")
+            decky.logger.info('awim stopped with SIGTERM')
         except TimeoutError:
             with suppress(ProcessLookupError):
                 process.kill()
             await process.wait()
-            decky.logger.info("awim stopped with SIGKILL")
+            decky.logger.info('awim stopped with SIGKILL')
         finally:
             self.awim_process = None
             self._stopping_awim = False
@@ -420,18 +420,18 @@ class Plugin:
             if not line:
                 return
 
-            message = line.decode(errors="replace").strip()
+            message = line.decode(errors='replace').strip()
             if not message:
                 continue
 
-            if stream_name == "stderr":
+            if stream_name == 'stderr':
                 self._collect_error_markers(message)
 
-            decky.logger.info("awim %s: %s", stream_name, message)
+            decky.logger.info('awim %s: %s', stream_name, message)
             self._update_connection_status_from_log(message)
 
     def _update_connection_status_from_log(self, message: str):
-        if re.fullmatch(r"Connected", message, re.IGNORECASE):
+        if re.fullmatch(r'Connected', message, re.IGNORECASE):
             self._set_connected_status()
             return
 
@@ -443,13 +443,13 @@ class Plugin:
             return
 
         lowered = message.lower()
-        if "connection reset" in lowered or "connection closed" in lowered:
+        if 'connection reset' in lowered or 'connection closed' in lowered:
             self._set_waiting_status(self._next_waiting_attempt())
 
     def _collect_error_markers(self, message: str):
         lowered = message.lower()
         for rule in ERROR_STATUS_RULES:
-            marker = str(rule["marker"])
+            marker = str(rule['marker'])
             if marker in lowered:
                 self._error_markers.add(marker)
 
@@ -503,8 +503,8 @@ class Plugin:
 
     def _build_awim_env(self) -> dict[str, str]:
         env = os.environ.copy()
-        env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+        env.setdefault('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
 
-        self._set_env_path_if_missing(env, "PIPEWIRE_MODULE_DIR", PIPEWIRE_MODULE_DIR_CANDIDATES)
-        self._set_env_path_if_missing(env, "SPA_PLUGIN_DIR", SPA_PLUGIN_DIR_CANDIDATES)
+        self._set_env_path_if_missing(env, 'PIPEWIRE_MODULE_DIR', PIPEWIRE_MODULE_DIR_CANDIDATES)
+        self._set_env_path_if_missing(env, 'SPA_PLUGIN_DIR', SPA_PLUGIN_DIR_CANDIDATES)
         return env
