@@ -19,3 +19,6 @@ Use `pnpm` to build the project. For an isolated build of the [awim-client](http
     pnpm run build
     ```
     > After successful compilation, you will receive a `zip` archive in the `out` directory, which can be installed in decky loader via developer mode.
+
+# Screenshots
+![screenshot](assets/screenshot.jpg)

@@ -6,6 +6,6 @@
   "publish": {
     "tags": ["audio", "network", "microphone"],
     "description": "AWiM Deck plugin for managing awim-client.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "image": "https://raw.githubusercontent.com/ergolyam/awim-deck/main/assets/screenshot.jpg"
   }
 }
