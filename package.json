@@ -1,7 +1,7 @@
 {
   "name": "awim-deck",
   "displayName": "AWiM Deck",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "AWiM Deck plugin for managing awim-client on Steam Deck",
   "type": "module",
   "scripts": {
