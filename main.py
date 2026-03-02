@@ -308,15 +308,13 @@ class Plugin:
         return 1024 <= port <= 65535
 
     def _awim_path(self) -> str:
-        candidates = [
-            os.path.join(decky.DECKY_PLUGIN_DIR, 'bin', 'awim'),
-            os.path.join(decky.DECKY_PLUGIN_DIR, 'backend', 'out', 'awim'),
-        ]
-        for path in candidates:
-            if os.path.isfile(path):
-                return path
-
-        raise FileNotFoundError('Could not find awim binary in bin/awim or backend/out/awim.')
+        path = os.path.join(decky.DECKY_PLUGIN_DIR, 'bin', 'awim')
+        if os.path.isfile(path):
+            return path
+        raise FileNotFoundError(
+            'Could not find awim binary at bin/awim. '
+            'Reinstall the plugin to trigger Decky remote binary download.'
+        )
 
     def _is_running(self) -> bool:
         self._refresh_process_state()
@@ -349,9 +347,13 @@ class Plugin:
             if os.path.isfile(awim_path):
                 raise RuntimeError(
                     'awim exists but failed to start. Likely incompatible binary for SteamOS '
-                    '(libc/architecture mismatch). Rebuild backend in Decky Docker/holo-base.'
+                    '(libc/architecture mismatch). Verify the remote_binary URL points to a '
+                    'Steam Deck-compatible build.'
                 ) from error
-            raise RuntimeError('awim binary was not found in plugin bin directory.') from error
+            raise RuntimeError(
+                'awim binary was not found in plugin bin directory. '
+                'Reinstall plugin to re-download remote binary.'
+            ) from error
         except OSError as error:
             raise RuntimeError(f'OS error while starting awim: {error}') from error
 

@@ -15,12 +15,9 @@ ZIP_NAME="$PLUGIN_DIR_NAME-v$VERSION.zip"
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
-mkdir -p "$STAGE_DIR/bin"
 mkdir -p "$STAGE_DIR/dist"
 
 cp -r "$ROOT_DIR/dist/." "$STAGE_DIR/dist/"
-cp "$ROOT_DIR/backend/out/awim" "$STAGE_DIR/bin/awim"
-chmod +x "$STAGE_DIR/bin/awim"
 cp "$ROOT_DIR/main.py" "$STAGE_DIR/main.py"
 cp "$ROOT_DIR/plugin.json" "$STAGE_DIR/plugin.json"
 cp "$ROOT_DIR/package.json" "$STAGE_DIR/package.json"

@@ -1,13 +1,13 @@
 {
   "name": "awim-deck",
   "displayName": "AWiM Deck",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "AWiM Deck plugin for managing awim-client on Steam Deck",
   "type": "module",
   "scripts": {
     "build": "sh ./scripts/build-and-package.sh",
     "build:frontend": "rollup -c",
-    "build:backend": "make -C backend",
+    "build:backend": "echo \"Backend binary is provided via decky remote_binary\"",
     "package": "sh ./scripts/package-plugin.sh",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -51,5 +51,12 @@
         "react-dom"
       ]
     }
-  }
+  },
+  "remote_binary": [
+    {
+      "name": "awim",
+      "url": "https://github.com/ergolyam/awim-client/releases/download/v0.1.1/awim-glibc-x86_64",
+      "sha256hash": "590320d8b049f120c22a133ff356c928d20cba76fdd67f8a25775220f99489b4"
+    }
+  ]
 }

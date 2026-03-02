@@ -21,11 +21,13 @@ AWiM Deck is a Decky Loader plugin that runs [awim-client](https://github.com/ro
 ### 3) On Steam Deck
 1. In Decky Loader, enable Developer mode if needed.
 2. Install the downloaded `awim-deck-v*.zip` from releases.
-3. Open the **AWiM Deck** plugin panel.
-4. Set **IP address** and **Port** to the values shown in the phone app.
-5. Set **TCP Mode** to match the phone app mode.
-6. Toggle **Enable AWiM** on.
-7. Confirm status changes from `Stopped` to waiting/connected state.
+3. Wait for Decky to download the remote `awim` binary on install/update.
+4. If Decky reports remote binary download failure, check network and reinstall.
+5. Open the **AWiM Deck** plugin panel.
+6. Set **IP address** and **Port** to the values shown in the phone app.
+7. Set **TCP Mode** to match the phone app mode.
+8. Toggle **Enable AWiM** on.
+9. Confirm status changes from `Stopped` to waiting/connected state.
 
 ## How To Use
 1. Connect Steam Deck and phone to the same Wi-Fi network.
@@ -50,9 +52,10 @@ AWiM Deck is a Decky Loader plugin that runs [awim-client](https://github.com/ro
 - `nodejs`
 - `pnpm`
 - `python3`
-- `make`
-- `libpipewire-0.3`
-- optional: `docker` or `podman` (recommended for reproducible backend build)
+
+### Remote binary source
+- Decky `remote_binary` downloads `bin/awim` from:
+  - `https://github.com/ergolyam/awim-client/releases/download/v0.1.1/awim-glibc-x86_64`
 
 ### Build from source
 ```bash
@@ -67,7 +70,8 @@ pnpm run build
 - staging directory: `out/awim-deck/`
 
 ## Upstream Projects
-- [awim-client](https://github.com/rotlir/awim-client) (Linux/PipeWire client)
+- [awim-client fork](https://github.com/ergolyam/awim-client) (fork of upstream awim-client)
+- [awim-client upstream](https://github.com/rotlir/awim-client) (original Linux/PipeWire client)
 - [awim-server](https://github.com/rotlir/awim-server) (Android server app)
 
 ## License
