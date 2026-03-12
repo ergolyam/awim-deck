@@ -6,6 +6,9 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
+env:
+  PLUGIN_NAME: ${{ github.event.repository.name }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,6 +28,26 @@ jobs:
       - name: Build plugin
         run: pnpm run build
 
+      - name: Package plugin
+        run: |
+          set -uexo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          OUT_DIR="out"
+          STAGE_DIR="${OUT_DIR}/${PLUGIN_NAME}"
+          ZIP_ARCHIVE="${PLUGIN_NAME}-v${VERSION}.zip"
+
+          mkdir -p ${STAGE_DIR}
+
+          cp -r dist "${STAGE_DIR}/dist"
+          cp main.py "${STAGE_DIR}/main.py"
+          cp plugin.json "${STAGE_DIR}/plugin.json"
+          cp package.json "${STAGE_DIR}/package.json"
+          cp license "${STAGE_DIR}/license"
+          cp readme.md "${STAGE_DIR}/readme.md"
+
+          cd "${OUT_DIR}"
+          zip -r -X "${ZIP_ARCHIVE}" "${PLUGIN_NAME}"
+
       - name: Create release
         uses: softprops/action-gh-release@v2.3.2
         env:
@@ -34,4 +57,4 @@ jobs:
           name: ${{ github.event.repository.name }} ${{ github.ref_name }}
           generate_release_notes: true
           prerelease: false
-          files: out/${{ github.event.repository.name }}-*.zip
+          files: out/${{ env.PLUGIN_NAME }}-*.zip
