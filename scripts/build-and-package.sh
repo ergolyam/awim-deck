@@ -1,11 +1,8 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIR=$(dirname -- "$0")
-cd "$SCRIPT_DIR"
-SCRIPT_DIR=$(pwd)
-cd ..
-ROOT_DIR=$(pwd)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(dirname -- "$SCRIPT_DIR")
 
 cd "$ROOT_DIR"
 pnpm run build:frontend
